@@ -4,6 +4,10 @@ import logging
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, CallbackContext
 from django.conf import settings
+from .models import AppAdminuser
+from django.contrib.auth.hashers import make_password
+from asgiref.sync import sync_to_async
+import django.utils.timezone
 
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
@@ -15,8 +19,34 @@ logger = logging.getLogger(__name__)
 TOKEN = settings.TELEGRAM_BOT_TOKEN
 
 
+async def create_or_get_user(user_id, username, first_name, last_name):
+    return await sync_to_async(AppAdminuser.objects.get_or_create)(
+        username=username,
+        defaults={
+            'password': make_password(None),
+            'first_name': first_name or '',
+            'last_name': last_name or '',
+            'email': f'{username}@example.com',
+            'is_superuser': False,
+            'is_staff': False,
+            'is_active': True,
+            'date_joined': django.utils.timezone.now(),
+        }
+    )
+
+
 async def start(update: Update, context: CallbackContext) -> None:
-    await update.message.reply_text("Привет! Я Telegram-бот, работающий через Django!")
+    user_id = update.message.from_user.id
+    username = update.message.from_user.username or f'user_{user_id}'
+    first_name = update.message.from_user.first_name
+    last_name = update.message.from_user.last_name
+    email = f'{username}@example.com'
+
+    user, created = await create_or_get_user(user_id, username, first_name, last_name)
+
+    message = "Вы успешно зарегистрированы!" if created else "Вы уже зарегистрированы."
+
+    await update.message.reply_text(message)
 
 
 async def echo(update: Update, context: CallbackContext) -> None:

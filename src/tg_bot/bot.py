@@ -7,7 +7,7 @@ from django.conf import settings
 from .models import AppAdminuser
 from django.contrib.auth.hashers import make_password
 from asgiref.sync import sync_to_async
-import django.utils.timezone
+from django.utils.timezone import now
 
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
@@ -30,7 +30,8 @@ async def create_or_get_user(user_id, username, first_name, last_name):
             'is_superuser': False,
             'is_staff': False,
             'is_active': True,
-            'date_joined': django.utils.timezone.now(),
+            'date_joined': now(),
+            'phone_number': None,
         }
     )
 
@@ -44,20 +45,57 @@ async def start(update: Update, context: CallbackContext) -> None:
 
     user, created = await create_or_get_user(user_id, username, first_name, last_name)
 
-    message = "Вы успешно зарегистрированы!" if created else "Вы уже зарегистрированы."
+    message = "Вы успешно зарегистрированы! Введите /set_phone <номер> для завершения регистрации." if created \
+        else "Вы уже зарегистрированы. Введите /set_phone <номер>, если ещё не указали его."
 
     await update.message.reply_text(message)
 
 
-async def echo(update: Update, context: CallbackContext) -> None:
-    await update.message.reply_text(update.message.text)
+async def get_user(username):
+    return await sync_to_async(AppAdminuser.objects.filter(username=username).first)()
 
 
+# Функция для установки номера телефона
+async def set_phone(update: Update, context: CallbackContext) -> None:
+    user_id = update.message.from_user.id
+    username = update.message.from_user.username or f'user_{user_id}'
+    user = await get_user(username)
+
+    if not user:
+        await update.message.reply_text("Сначала введите /start для регистрации.")
+        return
+
+    # Проверяем, передал ли пользователь номер
+    if context.args:
+        phone_number = context.args[0]
+        user.phone_number = phone_number
+        await sync_to_async(user.save)()
+        await update.message.reply_text(f"Номер {phone_number} сохранён!")
+    else:
+        await update.message.reply_text(
+            "Введите номер телефона после команды /set_phone: \nПример: `/set_phone 89001234567`")
+
+
+# Фильтр для блокировки команд
+async def restricted_command(update: Update, context: CallbackContext) -> None:
+    user_id = update.message.from_user.id
+    user = await get_user(user_id)
+
+    if user and user.phone_number:
+        await update.message.reply_text("Эта команда пока недоступна.")
+    else:
+        await update.message.reply_text("Сначала укажите свой номер телефона командой /set_phone.")
+
+
+# Запуск бота
 def run_bot():
     app = Application.builder().token(TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, echo))
+    app.add_handler(CommandHandler("set_phone", set_phone))
+
+    # Блокируем другие команды
+    app.add_handler(MessageHandler(filters.COMMAND, restricted_command))
 
     logger.info("Бот запущен...")
     app.run_polling()

@@ -19,6 +19,7 @@ class AppAdminuser(models.Model):
     is_staff = models.BooleanField()
     is_active = models.BooleanField()
     date_joined = models.DateTimeField()
+    phone_number = models.CharField(max_length=20, blank=True, null=True)
 
     class Meta:
         managed = False

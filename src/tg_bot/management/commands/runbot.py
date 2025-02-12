@@ -6,4 +6,4 @@ class Command(BaseCommand):
     help = "Запускает Telegram-бота"
 
     def handle(self, *args, **kwargs):
-        run_bot()  # Запускаем бота
+        run_bot()

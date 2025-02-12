@@ -38,7 +38,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "app",
-    "bot",
+    "tg_bot",
 ]
 
 MIDDLEWARE = [
@@ -124,3 +124,6 @@ STATIC_URL = "static/"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 AUTH_USER_MODEL = "app.AdminUser"
+
+TELEGRAM_BOT_TOKEN = "8089979136:AAGMxHGDMzUUhFvMQ_19-4x4othiQx61F-k"
+

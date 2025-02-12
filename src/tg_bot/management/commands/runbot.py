@@ -1,5 +1,5 @@
 from django.core.management.base import BaseCommand
-from tg_bot.bot import run_bot  # Импортируем функцию запуска бота
+from tg_bot.bot import run_bot
 
 
 class Command(BaseCommand):
